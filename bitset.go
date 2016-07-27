@@ -1,4 +1,4 @@
-// package bitset provides facilities to manipulate bits in a bitset.
+// Package bitset provides facilities to manipulate bits in a bitset.
 // It is thread-safe.
 package bitset
 
@@ -107,8 +107,8 @@ func (bs *Bitset) SetVal(start uint32, end uint32, fromval uint32) error {
 		start, end = end, start
 	}
 	numbit_to_set := end - start + 1
-	if numbit_to_set >= 31 {
-		return ErrRange
+	if numbit_to_set > 32 {
+		return ErrMaxR
 	}
 	startbyte := start >> 3
 	startbitpos := start & 7
@@ -144,6 +144,48 @@ func (bs *Bitset) SetVal(start uint32, end uint32, fromval uint32) error {
 		tmp = 0
 	}
 	return nil
+}
+
+// GetVal packs the bits from start to end index in a uint32 number and returns.
+// the bits are right adjusted in the packed number. For example, if we try to get the bits from 10
+// to 15 (6 bits), the returned uint32 value will have the bit (0 to 5) set with the bits from
+// index 15 to 10.
+// It returns out of range error if end exceeds size of the bitset or start - end >  31.
+func (bs *Bitset) GetVal(start uint32, end uint32) (uint32, error) {
+	if end < start {
+		start, end = end, start
+	}
+	numbit_to_set := end - start + 1
+	if numbit_to_set > 32 {
+		return 0, ErrMaxR
+	}
+
+	var ret uint32 = 0
+	startbyte := start >> 3
+	startbitpos := start & 7
+	endbyte := end >> 3
+	endbitpos := end & 7
+	var i uint32 = 0
+
+	for {
+		ret |= uint32(bs.buf[startbyte+i])
+		if i == 0 && startbitpos != 0 {
+			ret &= (0xff >> startbitpos)
+		}
+		if startbyte+i == endbyte || i == 3 {
+			break
+		}
+		i++
+		ret <<= 8
+	}
+	if startbyte+i != endbyte {
+		// the bit range spread over 5 bytes
+		ret <<= (endbitpos + 1)
+		ret |= (uint32(bs.buf[endbyte]) >> (7 - endbitpos))
+	} else if endbitpos != 7 {
+		ret >>= (7 - endbitpos)
+	}
+	return ret, nil
 }
 
 // ClearAll sets all the bits in the bitset to zero
@@ -360,16 +402,154 @@ func (bs *Bitset) GetZerobitCount() uint64 {
 	return (uint64(bs.size) << 3) - bs.getSetbitc()
 }
 
-func (bs *Bitset) getSetbitc() uint64 {
+// GetNextSetBit returns position of next set bit after from_position. If no such bit exists,
+// -1 is returned. Non-nil error status is returned when the passed position is exceeds the
+// highest bit position in the bit set
+func (bs *Bitset) GetNextSetBit(from_position uint32) (int64, error) {
+	bit_pos := (from_position & 7)
+	var from_byte uint32 = 0
+	if bit_pos == 7 {
+		from_byte = (from_position >> 3) + 1
+	} else {
+		from_byte = (from_position >> 3)
+	}
 	bs.mutex.RLock()
 	defer bs.mutex.RUnlock()
-	var ret uint64 = 0
-	var i uint32 = 0
-	for i < bs.size {
-		ret += uint64(setbits[bs.buf[i]])
+	if from_byte >= bs.size {
+		return -1, ErrRange
+	}
+	i := from_byte
+	if bit_pos != 7 {
+		tmp := (byte(255) >> (bit_pos + 1)) & bs.buf[i]
+		if leftm1[tmp] != 8 {
+			return int64(from_byte<<3) + int64(7-leftm1[tmp]), nil
+		}
 		i++
 	}
-	return ret
+	for i < bs.size {
+		if leftm1[bs.buf[i]] != 8 {
+			return int64(i<<3) + int64(7-leftm1[bs.buf[i]]), nil
+		}
+		i++
+	}
+	return -1, nil
+}
+
+// GetNextZeroBit returns position of next zero bit after from_position. If no such bit exists,
+// -1 is returned. Non-nil error status is returned when the passed position is exceeds the
+// highest bit position in the bit set
+func (bs *Bitset) GetNextZeroBit(from_position uint32) (int64, error) {
+	bit_pos := (from_position & 7)
+	var from_byte uint32 = 0
+	if bit_pos == 7 {
+		from_byte = (from_position >> 3) + 1
+	} else {
+		from_byte = (from_position >> 3)
+	}
+	bs.mutex.RLock()
+	defer bs.mutex.RUnlock()
+	if from_byte >= bs.size {
+		return -1, ErrRange
+	}
+	i := from_byte
+	if bit_pos != 7 {
+		tmp := (byte(255) << (7 - bit_pos)) | bs.buf[i]
+		if leftmz[tmp] != 8 {
+			return int64(from_byte<<3) + int64(7-leftmz[tmp]), nil
+		}
+		i++
+	}
+	for i < bs.size {
+		if leftmz[bs.buf[i]] != 8 {
+			return int64(i<<3) + int64(7-leftmz[bs.buf[i]]), nil
+		}
+		i++
+	}
+	return -1, nil
+}
+
+// GetPrevZeroBit returns position of previous zero bit before from_position. If no such bit exists,
+// -1 is returned. If from_position exceeds the highest bit position, then non-null error is
+// returned
+func (bs *Bitset) GetPrevZeroBit(from_position uint32) (int64, error) {
+	if from_position == 0 {
+		return -1, nil
+	}
+	bit_pos := (from_position & 7)
+	var from_byte uint32 = 0
+	if bit_pos == 0 {
+		from_byte = (from_position >> 3) - 1
+	} else {
+		from_byte = (from_position >> 3)
+	}
+	bs.mutex.RLock()
+	defer bs.mutex.RUnlock()
+	if from_byte >= bs.size {
+		return -1, ErrRange
+	}
+	i := from_byte
+	if bit_pos != 0 {
+		tmp := (byte(255) >> bit_pos) | bs.buf[i]
+		if rightmz[tmp] != 8 {
+			return int64(from_byte<<3) + int64(7-rightmz[tmp]), nil
+		}
+		if i == 0 {
+			return -1, nil
+		}
+		i--
+	}
+	for {
+		if rightmz[bs.buf[i]] != 8 {
+			return int64(i<<3) + int64(7-rightmz[bs.buf[i]]), nil
+		}
+		if i == 0 {
+			break
+		}
+		i--
+	}
+	return -1, nil
+}
+
+// GetPrevSetBit returns position of previous set bit before from_position. If no such bit exists,
+// -1 is returned. If from_position exceeds the highest bit position, then non-null error is
+// returned
+func (bs *Bitset) GetPrevSetBit(from_position uint32) (int64, error) {
+	if from_position == 0 {
+		return -1, nil
+	}
+	bit_pos := (from_position & 7)
+	var from_byte uint32 = 0
+	if bit_pos == 0 {
+		from_byte = (from_position >> 3) - 1
+	} else {
+		from_byte = (from_position >> 3)
+	}
+	bs.mutex.RLock()
+	defer bs.mutex.RUnlock()
+	if from_byte >= bs.size {
+		return -1, ErrRange
+	}
+	i := from_byte
+	if bit_pos != 0 {
+		tmp := (byte(255) << (7 - bit_pos + 1)) & bs.buf[i]
+		if rightm1[tmp] != 8 {
+			return int64(from_byte<<3) + int64(7-rightm1[tmp]), nil
+		}
+		if i == 0 {
+			return -1, nil
+		}
+		i--
+	}
+	for {
+		if rightm1[bs.buf[i]] != 8 {
+			return int64(i<<3) + int64(7-rightm1[bs.buf[i]]), nil
+		}
+		if i == 0 {
+			break
+		}
+		i--
+	}
+	return -1, nil
 }
 
 // getBitBytePosition returns the corresponding byte position and bit position within the byte
@@ -381,4 +561,16 @@ func (bs *Bitset) getBitBytePosition(position uint32) (uint32, uint32, error) {
 		return 0, 0, ErrRange
 	}
 	return bytepos, bitpos, nil
+}
+
+func (bs *Bitset) getSetbitc() uint64 {
+	bs.mutex.RLock()
+	defer bs.mutex.RUnlock()
+	var ret uint64 = 0
+	var i uint32 = 0
+	for i < bs.size {
+		ret += uint64(setbits[bs.buf[i]])
+		i++
+	}
+	return ret
 }

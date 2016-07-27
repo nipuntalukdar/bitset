@@ -15,6 +15,7 @@ var (
 	leftm1   []byte
 	rightm1  []byte
 	ErrRange = errors.New("Index out of range")
+	ErrMaxR  = errors.New("Maximum bit range allowed for GetVal and SetVal is 32")
 )
 
 const (

@@ -270,6 +270,144 @@ func TestSetReset(t *testing.T) {
 			t.Fatal("And test failed")
 		}
 	}
+
+	bs.ClearAll()
+	indx, err := bs.GetNextSetBit(20)
+	if err != nil || indx != -1 {
+		t.Fatalf("GetNextSetBit failed %d %s", indx, err)
+	}
+	bs.SetBit(20)
+	indx, err = bs.GetNextSetBit(19)
+	if err != nil || indx != 20 {
+		t.Fatalf("GetNextSetBit failed")
+	}
+	bs.SetBit(16)
+	indx, err = bs.GetNextSetBit(0)
+	if err != nil || indx != 16 {
+		t.Fatalf("GetNextSetBit failed %d", indx)
+	}
+	indx, err = bs.GetNextZeroBit(16)
+	if err != nil || indx != 17 {
+		t.Fatalf("GetNextZeroBit failed")
+	}
+	indx, err = bs.GetNextZeroBit(19)
+	if err != nil || indx != 21 {
+		t.Fatalf("GetNextZeroBit failed")
+	}
+	bs.SetAll()
+	bs.ResetBit(80)
+	indx, err = bs.GetNextZeroBit(0)
+	if err != nil || indx != 80 {
+		t.Fatalf("GetNextZeroBit failed")
+	}
+	indx, err = bs.GetNextZeroBit(80)
+	if err != nil || indx != -1 {
+		t.Fatalf("GetNextZeroBit failed")
+	}
+	bs.ResetBit(81)
+	indx, err = bs.GetNextZeroBit(80)
+	if err != nil || indx != 81 {
+		t.Fatalf("GetNextZeroBit failed")
+	}
+	bs.ClearAll()
+	indx, err = bs.GetPrevSetBit(80)
+	if err != nil || indx != -1 {
+		t.Fatalf("GetPrevSetBit failed")
+	}
+	bs.SetBit(99)
+	indx, err = bs.GetPrevSetBit(600)
+	if err != nil || indx != 99 {
+		t.Fatalf("GetPrevSetBit failed")
+	}
+	bs.SetBit(100)
+	indx, err = bs.GetPrevSetBit(600)
+	if err != nil || indx != 100 {
+		t.Fatalf("GetPrevSetBit failed")
+	}
+	indx, err = bs.GetPrevSetBit(100)
+	if err != nil || indx != 99 {
+		t.Fatalf("GetPrevSetBit failed")
+	}
+	indx, err = bs.GetPrevSetBit(99)
+	if err != nil || indx != -1 {
+		t.Fatalf("GetPrevSetBit failed, prev_pos expected -1, got %d", indx)
+	}
+	indx, err = bs.GetPrevZeroBit(99)
+	if err != nil || indx != 98 {
+		t.Fatalf("GetPrevZeroBit failed, prev_pos expected 98, got %d", indx)
+	}
+	indx, err = bs.GetPrevZeroBit(639)
+	if err != nil || indx != 638 {
+		t.Fatalf("GetPrevZeroBit failed, prev_pos expected 638, got %d", indx)
+	}
+	bs.SetAll()
+	indx, err = bs.GetPrevZeroBit(639)
+	if err != nil || indx != -1 {
+		t.Fatalf("GetPrevZeroBit failed, prev_pos expected -1, got %d", indx)
+	}
+	bs.ResetBit(7)
+	indx, err = bs.GetPrevZeroBit(639)
+	if err != nil || indx != 7 {
+		t.Fatalf("GetPrevZeroBit failed, prev_pos expected 7, got %d", indx)
+	}
+	indx, err = bs.GetPrevZeroBit(8)
+	if err != nil || indx != 7 {
+		t.Fatalf("GetPrevZeroBit failed, prev_pos expected 7, got %d", indx)
+	}
+	indx, err = bs.GetPrevZeroBit(7)
+	if err != nil || indx != -1 {
+		t.Fatalf("GetPrevZeroBit failed, prev_pos expected 7, got %d", indx)
+	}
+
+	bs.ClearAll()
+	recvd, err = bs.GetByte(0)
+	if err != nil || recvd != 0 {
+		t.Fatalf("GetByte failed")
+	}
+	bs.SetVal(0, 8, 0xffffffff)
+	recvd, err = bs.GetByte(0)
+	if err != nil || recvd != 255 {
+		t.Fatalf("GetByte failed, expected value 255, got %d", recvd)
+	}
+	recvd, err = bs.GetByte(8)
+	if err != nil || recvd != 128 {
+		t.Fatalf("GetByte failed, expected value 255, got %d", recvd)
+	}
+	retuint32, err := bs.GetVal(0, 8)
+	if err != nil || retuint32 != 511 {
+		t.Fatalf("GetVal failed, expected value 511, got %d", retuint32)
+	}
+	retuint32, err = bs.GetVal(0, 3)
+	if err != nil || retuint32 != 15 {
+		t.Fatalf("GetVal failed, expected value 511, got %d", retuint32)
+	}
+	retuint32, err = bs.GetVal(0, 0)
+	if err != nil || retuint32 != 1 {
+		t.Fatalf("GetVal failed, expected value 511, got %d", retuint32)
+	}
+	retuint32, err = bs.GetVal(1, 8)
+	if err != nil || retuint32 != 255 {
+		t.Fatalf("GetVal failed, expected value 255, got %d", retuint32)
+	}
+	retuint32, err = bs.GetVal(7, 8)
+	if err != nil || retuint32 != 3 {
+		t.Fatalf("GetVal failed, expected value 3, got %d", retuint32)
+	}
+	retuint32, err = bs.GetVal(8, 8)
+	if err != nil || retuint32 != 1 {
+		t.Fatalf("GetVal failed, expected value 3, got %d", retuint32)
+	}
+	retuint32, err = bs.GetVal(8, 39)
+	if err != nil || retuint32 != 2147483648 {
+		t.Fatalf("GetVal failed, expected value 2147483648, got %d, %v", retuint32, err)
+	}
+
+	bs.ClearAll()
+	bs.SetVal(16, 47, 0xffffffff)
+	retuint32, err = bs.GetVal(16, 47)
+	if err != nil || retuint32 != 0xffffffff {
+		t.Fatalf("GetVal failed, expected value 0xffffffff, got %d, %v", retuint32, err)
+	}
 }
 
 func TestBitSetClone(t *testing.T) {
