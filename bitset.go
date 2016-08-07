@@ -99,9 +99,9 @@ func (bs *Bitset) GetSize() uint32 {
 	return bs.size
 }
 
-// SetVal assigns the value from fromval on the bits on the bitset, it returns nil on success.
+// SetVal assigns the value from fromval on the bits of the bitset, it returns nil on success.
 // It returns out of range error if end exceeds size of the bitset or start - end >  31
-// Also it will take the lowest (end - start + 1) from fromval
+// Also it will take the lowest (end - start + 1) bits from fromval
 func (bs *Bitset) SetVal(start uint32, end uint32, fromval uint32) error {
 	if end < start {
 		start, end = end, start
