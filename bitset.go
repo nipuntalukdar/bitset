@@ -18,6 +18,28 @@ func NewBitset(size uint32) *Bitset {
 	return &Bitset{size: size, buf: buf, mutex: &sync.RWMutex{}}
 }
 
+// Get a new instace of Bitset by copying the passed slice
+func NewBitsetFromArrayCopy(input []byte) *Bitset {
+	size := uint32(len(input))
+	if size == 0 {
+		return nil
+	}
+	buf := make([]byte, size)
+	copy(buf, input)
+	return &Bitset{size: size, buf: buf, mutex: &sync.RWMutex{}}
+}
+
+// Get a new instace of Bitset by taking reference of the passed slice. It is unsafe as
+// other threads may be working on the referened slice and they modifying the contents
+// independently
+func NewBitsetFromArray(input []byte) *Bitset {
+	size := uint32(len(input))
+	if size == 0 {
+		return nil
+	}
+	return &Bitset{size: size, buf: input, mutex: &sync.RWMutex{}}
+}
+
 // Resize expands or contracts a bitset keeping the content intact for
 // the copied bytes
 func (bs *Bitset) Resize(newsize uint32) {
@@ -274,7 +296,7 @@ func (bs *Bitset) SetRange(start uint32, end uint32) error {
 	return nil
 }
 
-// GetBytes returns a clone of unnderlying byte array of the Bitset
+// GetBytes returns a clone of underlying byte array of the Bitset
 func (bs *Bitset) GetBytes() []byte {
 	bs.mutex.RLock()
 	defer bs.mutex.RUnlock()
@@ -283,7 +305,7 @@ func (bs *Bitset) GetBytes() []byte {
 	return ret
 }
 
-// GetBytesUnsafe returns referene of unnderlying byte array of the Bitset
+// GetBytesUnsafe returns referene of underlying byte array of the Bitset
 func (bs *Bitset) GetBytesUnsafe() []byte {
 	bs.mutex.RLock()
 	defer bs.mutex.RUnlock()
