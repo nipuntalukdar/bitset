@@ -283,6 +283,13 @@ func (bs *Bitset) GetBytes() []byte {
 	return ret
 }
 
+// GetBytesUnsafe returns referene of unnderlying byte array of the Bitset
+func (bs *Bitset) GetBytesUnsafe() []byte {
+	bs.mutex.RLock()
+	defer bs.mutex.RUnlock()
+	return bs.buf
+}
+
 // Flip flips the bit at some position, returns non-nil error if position is out of range
 func (bs *Bitset) Flip(position uint32) error {
 	bs.mutex.Lock()
