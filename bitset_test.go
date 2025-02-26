@@ -189,13 +189,13 @@ func TestSetReset(t *testing.T) {
 		t.Fatalf("SetRange failed, expected 7, got %d", recvd)
 	}
 	if recvd, err = bs.GetByte(24); err != nil || recvd != 255 {
-		t.Fatal("SetRange failed, expected 255, got %d", recvd)
+		t.Fatalf("SetRange failed, expected 255, got %d", recvd)
 	}
 	if recvd, err = bs.GetByte(32); err != nil || recvd != 255 {
-		t.Fatal("SetRange failed, expected 255, got %d", recvd)
+		t.Fatalf("SetRange failed, expected 255, got %d", recvd)
 	}
 	if recvd, err = bs.GetByte(40); err != nil || recvd != 128 {
-		t.Fatal("SetRange failed, expected 128, got %d", recvd)
+		t.Fatalf("SetRange failed, expected 128, got %d", recvd)
 	}
 	bs.SetAll()
 	if err = bs.ClearRange(20, 40); err != nil {
@@ -205,13 +205,13 @@ func TestSetReset(t *testing.T) {
 		t.Fatalf("ClearRange failed, expected 7, got %d", recvd)
 	}
 	if recvd, err = bs.GetByte(24); err != nil || recvd != 0 {
-		t.Fatal("ClearRange failed, expected 255, got %d", recvd)
+		t.Fatalf("ClearRange failed, expected 255, got %d", recvd)
 	}
 	if recvd, err = bs.GetByte(32); err != nil || recvd != 0 {
-		t.Fatal("ClearRange failed, expected 255, got %d", recvd)
+		t.Fatalf("ClearRange failed, expected 255, got %d", recvd)
 	}
 	if recvd, err = bs.GetByte(40); err != nil || recvd != 127 {
-		t.Fatal("ClearRange failed, expected 128, got %d", recvd)
+		t.Fatalf("ClearRange failed, expected 128, got %d", recvd)
 	}
 
 	if bs.IsAllSet() || bs.IsAllZero() {
